@@ -461,6 +461,12 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                           src={entry.carpet.localUrl}
                           alt={entry.carpet.persianName}
                           referrerPolicy="no-referrer"
+                          onError={(e) => {
+                            const fallback = `https://drive.google.com/thumbnail?id=${entry.carpet.id}&sz=w300`;
+                            if (e.currentTarget.src !== fallback) {
+                              e.currentTarget.src = fallback;
+                            }
+                          }}
                           className="w-11 h-14 rounded-lg object-cover border border-black/20 shrink-0 bg-black"
                         />
                         <div className="min-w-0">

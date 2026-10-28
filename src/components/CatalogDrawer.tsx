@@ -324,6 +324,12 @@ export const CatalogDrawer: React.FC<CatalogDrawerProps> = ({
                             src={carpet.localUrl}
                             alt={carpet.persianName}
                             referrerPolicy="no-referrer"
+                            onError={(e) => {
+                              const fallback = `https://drive.google.com/thumbnail?id=${carpet.id}&sz=w300`;
+                              if (e.currentTarget.src !== fallback) {
+                                e.currentTarget.src = fallback;
+                              }
+                            }}
                             className="w-10 h-11 rounded-md object-cover border border-neutral-700 shrink-0 bg-black"
                           />
                           <div className="min-w-0">

@@ -1,4 +1,5 @@
 import React, { useEffect, useRef, useState } from 'react';
+import { ExternalLink, RefreshCw, Lock } from 'lucide-react';
 import { OfflineFilterSettings } from '../services/carpetNaming';
 import { CarpetItem } from '../services/driveService';
 
@@ -162,6 +163,10 @@ export const OfflineCarpetCanvas: React.FC<OfflineCarpetCanvasProps> = ({
   const sourceCanvasRef = useRef<HTMLCanvasElement | null>(null);
 
   const [loading, setLoading] = useState<boolean>(true);
+  const [fallbackImgSrc, setFallbackImgSrc] = useState<string | null>(null);
+  const [loadFailed, setLoadFailed] = useState<boolean>(false);
+  const [retryTick, setRetryTick] = useState<number>(0);
+
   const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
   const [isPanning, setIsPanning] = useState(false);
   const panStartRef = useRef<{ x: number; y: number }>({ x: 0, y: 0 });
@@ -175,68 +180,114 @@ export const OfflineCarpetCanvas: React.FC<OfflineCarpetCanvasProps> = ({
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
+    setFallbackImgSrc(null);
+    setLoadFailed(false);
 
     const srcCanvas = document.createElement('canvas');
     sourceCanvasRef.current = srcCanvas;
 
-    const img = new Image();
-    img.crossOrigin = 'anonymous';
+    const candidateUrls = [
+      `./api/carpet-image/${item.id}${retryTick > 0 ? `?t=${retryTick}` : ''}`,
+      item.localUrl.startsWith('/') ? `.${item.localUrl}` : item.localUrl,
+      `https://drive.google.com/thumbnail?id=${item.id}&sz=w1200`,
+      `https://lh3.googleusercontent.com/d/${item.id}=w1200`,
+    ];
 
-    img.onload = () => {
+    let attemptIndex = 0;
+
+    const tryNextSource = (useCors: boolean) => {
       if (cancelled) return;
-      const maxDim = 1150;
-      const scale = Math.min(
-        1,
-        maxDim / Math.max(img.naturalWidth || 800, img.naturalHeight || 1000)
-      );
-      const w = Math.max(250, Math.round((img.naturalWidth || 750) * scale));
-      const h = Math.max(300, Math.round((img.naturalHeight || 1000) * scale));
-
-      srcCanvas.width = w;
-      srcCanvas.height = h;
-      const sCtx = srcCanvas.getContext('2d');
-      if (sCtx) {
-        sCtx.drawImage(img, 0, 0, w, h);
+      if (attemptIndex >= candidateUrls.length) {
         setLoading(false);
+        setLoadFailed(true);
+        return;
+      }
 
-        const destCanvas = displayCanvasRef.current;
-        if (destCanvas) {
-          destCanvas.width = w;
-          destCanvas.height = h;
-          const dCtx = destCanvas.getContext('2d');
-          if (dCtx) {
-            const activeFilter: OfflineFilterSettings = showOriginalHold
-              ? {
-                  presetId: 'original',
-                  contrast: 100,
-                  sharpness: 0,
-                  brightness: 100,
-                  saturation: 100,
-                  warmth: 0,
-                  vignette: 0,
-                }
-              : filter;
-            applyOfflineCarpetFilter(sCtx, dCtx, w, h, activeFilter);
-          }
+      const currentUrl = candidateUrls[attemptIndex];
+      const img = new Image();
+      if (useCors) {
+        img.crossOrigin = 'anonymous';
+      }
+
+      img.onload = () => {
+        if (cancelled) return;
+
+        // If we loaded without CORS (e.g. direct Google Drive CDN on GitHub Pages), render via <img> with CSS filters
+        if (!useCors) {
+          setFallbackImgSrc(currentUrl);
+          setLoading(false);
+          return;
         }
-      }
+
+        try {
+          const maxDim = 1150;
+          const scale = Math.min(
+            1,
+            maxDim / Math.max(img.naturalWidth || 800, img.naturalHeight || 1000)
+          );
+          const w = Math.max(250, Math.round((img.naturalWidth || 750) * scale));
+          const h = Math.max(300, Math.round((img.naturalHeight || 1000) * scale));
+
+          srcCanvas.width = w;
+          srcCanvas.height = h;
+          const sCtx = srcCanvas.getContext('2d');
+          if (sCtx) {
+            sCtx.drawImage(img, 0, 0, w, h);
+            // Verify canvas is not tainted
+            sCtx.getImageData(0, 0, 1, 1);
+            setLoading(false);
+
+            const destCanvas = displayCanvasRef.current;
+            if (destCanvas) {
+              destCanvas.width = w;
+              destCanvas.height = h;
+              const dCtx = destCanvas.getContext('2d');
+              if (dCtx) {
+                const activeFilter: OfflineFilterSettings = showOriginalHold
+                  ? {
+                      presetId: 'original',
+                      contrast: 100,
+                      sharpness: 0,
+                      brightness: 100,
+                      saturation: 100,
+                      warmth: 0,
+                      vignette: 0,
+                    }
+                  : filter;
+                applyOfflineCarpetFilter(sCtx, dCtx, w, h, activeFilter);
+              }
+            }
+          }
+        } catch {
+          // Canvas was tainted by cross-origin redirect; fallback to CSS-filtered <img>
+          setFallbackImgSrc(currentUrl);
+          setLoading(false);
+        }
+      };
+
+      img.onerror = () => {
+        if (cancelled) return;
+        // If a remote URL failed with CORS, try the same URL without CORS before advancing
+        if (useCors && currentUrl.startsWith('https://')) {
+          tryNextSource(false);
+          return;
+        }
+        attemptIndex++;
+        tryNextSource(true);
+      };
+
+      img.src = currentUrl;
     };
 
-    img.onerror = () => {
-      if (!cancelled) {
-        setLoading(false);
-      }
-    };
-
-    img.src = item.localUrl;
+    tryNextSource(true);
 
     return () => {
       cancelled = true;
     };
-  }, [item.id, item.localUrl]);
+  }, [item.id, item.localUrl, retryTick]);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || fallbackImgSrc || loadFailed) return;
     const srcCanvas = sourceCanvasRef.current;
     const destCanvas = displayCanvasRef.current;
     if (!srcCanvas || !destCanvas || srcCanvas.width === 0) return;
@@ -260,7 +311,11 @@ export const OfflineCarpetCanvas: React.FC<OfflineCarpetCanvasProps> = ({
       : filter;
 
     applyOfflineCarpetFilter(sCtx, dCtx, srcCanvas.width, srcCanvas.height, activeFilter);
-  }, [filter, showOriginalHold, loading]);
+  }, [filter, showOriginalHold, loading, fallbackImgSrc, loadFailed]);
+
+  const cssFilterValue = showOriginalHold
+    ? 'none'
+    : `contrast(${filter.contrast}%) brightness(${filter.brightness}%) saturate(${filter.saturation}%)`;
 
   return (
     <div
@@ -288,9 +343,64 @@ export const OfflineCarpetCanvas: React.FC<OfflineCarpetCanvasProps> = ({
         <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0F0F0E] gap-2.5">
           <div className="w-9 h-9 border-3 border-[#FACC15] border-t-transparent rounded-full animate-spin" />
           <span className="text-[11px] font-medium text-neutral-300">
-            پردازش آفلاین تصویر فرش...
+            در حال بارگذاری تصویر فرش...
           </span>
         </div>
+      )}
+
+      {loadFailed && !loading && (
+        <div
+          className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-[#0E0E0D] p-5 text-center"
+          onPointerDown={(e) => e.stopPropagation()}
+        >
+          <div className="w-11 h-11 rounded-xl bg-[#FACC15]/15 border border-[#FACC15]/40 flex items-center justify-center text-[#FACC15] mb-3">
+            <Lock className="w-5 h-5" />
+          </div>
+          <h4 className="text-xs font-bold text-[#FAF9F5] mb-1.5">
+            پوشه عکس‌ها در گوگل درایو روی حالت خصوصی (Restricted) است
+          </h4>
+          <p className="text-[11px] text-neutral-300 leading-5 mb-3.5 max-w-[290px]">
+            برای اینکه عکس‌های فرش برای همه (بدون نیاز به اکانت یا لاگین) باز شوند، در گوگل درایو روی پوشه{' '}
+            <span className="text-[#FACC15] font-bold">carpet</span> راست‌کلیک کرده، گزینه{' '}
+            <span className="text-[#FACC15] font-bold">Share</span> را بزنید و دسترسی را روی{' '}
+            <span className="text-[#FACC15] font-bold">Anyone with the link</span> بگذارید.
+          </p>
+          <div className="flex flex-col gap-2 w-full max-w-[260px]">
+            <a
+              href={`https://drive.google.com/drive/folders/${item.albumId || '1RvsIPdD_h84hwKFzKjc4ZgM3dFc_fXHP'}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg bg-[#FACC15] text-[#0A0A0A] font-bold text-[11px] hover:bg-[#FDE047] transition"
+            >
+              <ExternalLink className="w-3.5 h-3.5" />
+              <span>باز کردن پوشه carpet در گوگل درایو</span>
+            </a>
+            <button
+              type="button"
+              onClick={() => setRetryTick((t) => t + 1)}
+              className="flex items-center justify-center gap-1.5 w-full py-2 px-3 rounded-lg bg-neutral-800 text-[#FAF9F5] border border-neutral-700 font-semibold text-[11px] hover:border-[#FACC15] transition"
+            >
+              <RefreshCw className="w-3.5 h-3.5 text-[#FACC15]" />
+              <span>تلاش مجدد پس از عمومی کردن پوشه</span>
+            </button>
+          </div>
+        </div>
+      )}
+
+      {fallbackImgSrc && !loadFailed && (
+        <img
+          src={fallbackImgSrc}
+          alt={item.persianName}
+          style={{
+            filter: cssFilterValue,
+            transform: `scale(${zoomLevel}) translate(${panOffset.x / zoomLevel}px, ${panOffset.y / zoomLevel}px)`,
+            transition: isPanning ? 'none' : 'transform 180ms cubic-bezier(0.16, 1, 0.3, 1)',
+          }}
+          className={`w-full h-full max-h-full max-w-full select-none ${
+            fitMode === 'cover' ? 'object-cover object-center' : 'object-contain'
+          }`}
+          draggable={false}
+        />
       )}
 
       <canvas
@@ -300,8 +410,8 @@ export const OfflineCarpetCanvas: React.FC<OfflineCarpetCanvasProps> = ({
           transition: isPanning ? 'none' : 'transform 180ms cubic-bezier(0.16, 1, 0.3, 1)',
         }}
         className={`w-full h-full max-h-full max-w-full ${
-          fitMode === 'cover' ? 'object-cover object-center' : 'object-contain'
-        }`}
+          fallbackImgSrc || loadFailed ? 'hidden' : ''
+        } ${fitMode === 'cover' ? 'object-cover object-center' : 'object-contain'}`}
       />
 
       {showOriginalHold && (

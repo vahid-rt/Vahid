@@ -35,13 +35,26 @@ export interface ServerCatalogResponse {
   items: CarpetItem[];
 }
 
+function normalizeCatalogUrls(data: ServerCatalogResponse): ServerCatalogResponse {
+  return {
+    ...data,
+    items: data.items.map((item) => ({
+      ...item,
+      localUrl: item.localUrl.startsWith('/') ? `.${item.localUrl}` : item.localUrl,
+    })),
+  };
+}
+
 export async function fetchStoredCatalogFromServer(): Promise<ServerCatalogResponse> {
   try {
-    const res = await fetch('/api/catalog');
+    const res = await fetch('./api/catalog');
     if (res.ok) {
-      const data = (await res.json()) as ServerCatalogResponse;
-      if (data && Array.isArray(data.items) && data.items.length > 0) {
-        return data;
+      const contentType = res.headers.get('content-type') || '';
+      if (contentType.includes('application/json')) {
+        const data = (await res.json()) as ServerCatalogResponse;
+        if (data && Array.isArray(data.items) && data.items.length > 0) {
+          return normalizeCatalogUrls(data);
+        }
       }
     }
   } catch {
@@ -52,5 +65,7 @@ export async function fetchStoredCatalogFromServer(): Promise<ServerCatalogRespo
   if (!staticRes.ok) {
     throw new Error('خطا در خواندن کاتالوگ فرش');
   }
-  return staticRes.json() as Promise<ServerCatalogResponse>;
+  const staticData = (await staticRes.json()) as ServerCatalogResponse;
+  return normalizeCatalogUrls(staticData);
 }
+
