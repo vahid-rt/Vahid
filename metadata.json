@@ -1,0 +1,6 @@
+{
+  "name": "کاتالوگ دیجیتال فرش پشمی | Wool Carpet Flipbook",
+  "description": "کاتالوگ تعاملی و ورق‌زدنی فرش‌های ماشینی پشمی متصل به پوشه carpet در Google Drive با پردازشگر آفلاین ارتقای کنتراست و وضوح بافت",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
