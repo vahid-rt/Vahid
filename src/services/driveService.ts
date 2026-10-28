@@ -36,9 +36,21 @@ export interface ServerCatalogResponse {
 }
 
 export async function fetchStoredCatalogFromServer(): Promise<ServerCatalogResponse> {
-  const res = await fetch('/api/catalog');
-  if (!res.ok) {
-    throw new Error('خطا در خواندن کاتالوگ از سرور سایت');
+  try {
+    const res = await fetch('/api/catalog');
+    if (res.ok) {
+      const data = (await res.json()) as ServerCatalogResponse;
+      if (data && Array.isArray(data.items) && data.items.length > 0) {
+        return data;
+      }
+    }
+  } catch {
+    // Fallback to static public/catalog.json (e.g. GitHub Pages / static hosting)
   }
-  return res.json() as Promise<ServerCatalogResponse>;
+
+  const staticRes = await fetch('./catalog.json');
+  if (!staticRes.ok) {
+    throw new Error('خطا در خواندن کاتالوگ فرش');
+  }
+  return staticRes.json() as Promise<ServerCatalogResponse>;
 }

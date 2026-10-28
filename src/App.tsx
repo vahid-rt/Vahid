@@ -7,6 +7,8 @@ import {
   VolumeX,
   ShoppingBag,
   X,
+  Share2,
+  Check,
 } from 'lucide-react';
 import {
   FILTER_PRESETS,
@@ -25,6 +27,8 @@ import {
 import { CarpetFramePage, FrameTemplateStyle } from './components/CarpetFramePage';
 import { CatalogDrawer } from './components/CatalogDrawer';
 import { CartInvoiceModal } from './components/CartInvoiceModal';
+
+const PUBLIC_SHARED_URL = 'https://ais-pre-jixdrhwyui6hymqa6qtjae-8584636582.europe-west2.run.app';
 
 function playPageFlipSound() {
   try {
@@ -72,6 +76,7 @@ export function App() {
   // Shopping Cart & Invoice Modal State
   const [cart, setCart] = useState<CartItem[]>([]);
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
+  const [linkCopied, setLinkCopied] = useState<boolean>(false);
 
   // Offline Filter & Frame Style State
   const [filter, setFilter] = useState<OfflineFilterSettings>({
@@ -166,6 +171,34 @@ export function App() {
   const handleClearCart = useCallback(() => {
     setCart([]);
   }, []);
+
+  const handleShareCatalogLink = async () => {
+    const shareUrl =
+      window.location.hostname.includes('ais-dev')
+        ? PUBLIC_SHARED_URL
+        : window.location.origin;
+
+    try {
+      if (navigator.share) {
+        await navigator.share({
+          title: 'کاتالوگ دیجیتال فرش ماشینی پشمی',
+          text: 'مشاهده کاتالوگ ورق‌زدنی فرش‌های ماشینی پشمی:',
+          url: shareUrl,
+        });
+        return;
+      }
+    } catch {
+      // fallback to clipboard
+    }
+
+    try {
+      await navigator.clipboard.writeText(shareUrl);
+      setLinkCopied(true);
+      setTimeout(() => setLinkCopied(false), 2500);
+    } catch {
+      // ignore
+    }
+  };
 
   const totalCartItemsCount = useMemo(
     () => cart.reduce((sum, c) => sum + c.quantity, 0),
@@ -290,8 +323,27 @@ export function App() {
             کاتالوگ فرش پشمی
           </a>
 
-          {/* Right Actions: Shopping Cart Button + Drawer Trigger */}
+          {/* Right Actions: Share Link + Shopping Cart Button + Drawer Trigger */}
           <div className="flex items-center gap-1.5 shrink-0">
+            <button
+              type="button"
+              onClick={handleShareCatalogLink}
+              className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 text-xs font-bold flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
+              title="کپی و اشتراک‌گذاری لینک کاتالوگ"
+            >
+              {linkCopied ? (
+                <>
+                  <Check className="w-3.5 h-3.5 text-[#FACC15]" />
+                  <span className="text-[#FACC15]">کپی شد</span>
+                </>
+              ) : (
+                <>
+                  <Share2 className="w-3.5 h-3.5 text-[#FACC15]" />
+                  <span>لینک</span>
+                </>
+              )}
+            </button>
+
             <button
               type="button"
               onClick={() => setIsCartOpen(true)}
@@ -299,7 +351,7 @@ export function App() {
               title="مشاهده سبد خرید و فاکتور"
             >
               <ShoppingBag className="w-4 h-4 text-[#FACC15]" />
-              <span>سبد خرید</span>
+              <span>سبد</span>
               {totalCartItemsCount > 0 && (
                 <span className="px-1.5 py-0.2 rounded-full bg-[#FACC15] text-black text-[11px] font-extrabold tabular-nums">
                   {toPersianDigits(totalCartItemsCount)}
