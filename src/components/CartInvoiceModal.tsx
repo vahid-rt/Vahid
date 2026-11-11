@@ -24,10 +24,6 @@ interface CartInvoiceModalProps {
   onJumpToCarpet: (itemId: string) => void;
 }
 
-/**
- * Generates a high-resolution official PNG Invoice image on an HTML5 <canvas>
- * including the yellow/black/white header, customer info, item rows, codes, dimensions, and totals.
- */
 async function generateInvoiceCanvasBlob(
   cart: CartItem[],
   customerName: string,
@@ -49,28 +45,28 @@ async function generateInvoiceCanvasBlob(
   if (!ctx) return null;
 
   // Background
-  ctx.fillStyle = '#FAF9F5';
+  ctx.fillStyle = '#F8FAFC';
   ctx.fillRect(0, 0, width, height);
 
   // Outer Border
-  ctx.strokeStyle = '#0A0A0A';
+  ctx.strokeStyle = '#0B192C';
   ctx.lineWidth = 8;
   ctx.strokeRect(12, 12, width - 24, height - 24);
 
-  ctx.strokeStyle = '#FACC15';
-  ctx.lineWidth = 3;
+  ctx.strokeStyle = '#1E3A5F';
+  ctx.lineWidth = 2;
   ctx.strokeRect(20, 20, width - 40, height - 40);
 
   // Header Banner
-  ctx.fillStyle = '#0A0A0A';
+  ctx.fillStyle = '#0B192C';
   ctx.fillRect(24, 24, width - 48, 115);
 
-  ctx.fillStyle = '#FACC15';
+  ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 30px Vazirmatn, sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText('فاکتور سفارش کاتالوگ فرش ماشینی پشمی', width - 48, 72);
 
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#BAE6FD';
   ctx.font = '16px Vazirmatn, sans-serif';
   ctx.fillText(
     `شماره فاکتور: ${toPersianDigits(invoiceNumber)}   |   تاریخ: ${dateStr}`,
@@ -79,7 +75,7 @@ async function generateInvoiceCanvasBlob(
   );
 
   if (customerName.trim()) {
-    ctx.fillStyle = '#FACC15';
+    ctx.fillStyle = '#FFFFFF';
     ctx.textAlign = 'left';
     ctx.font = 'bold 16px Vazirmatn, sans-serif';
     ctx.fillText(`سفارش‌دهنده: ${customerName.trim()}`, 48, 112);
@@ -87,10 +83,10 @@ async function generateInvoiceCanvasBlob(
 
   // Table Header
   const tableTop = 152;
-  ctx.fillStyle = '#FACC15';
+  ctx.fillStyle = '#1E3A5F';
   ctx.fillRect(32, tableTop, width - 64, 44);
 
-  ctx.fillStyle = '#0A0A0A';
+  ctx.fillStyle = '#FFFFFF';
   ctx.font = 'bold 16px Vazirmatn, sans-serif';
   ctx.textAlign = 'right';
   ctx.fillText('ردیف و نام نقش فرش', width - 48, tableTop + 28);
@@ -102,15 +98,15 @@ async function generateInvoiceCanvasBlob(
   // Table Rows
   cart.forEach((entry, idx) => {
     const y = headerHeight + idx * rowHeight;
-    ctx.fillStyle = idx % 2 === 0 ? '#FFFFFF' : '#F3F2EE';
+    ctx.fillStyle = idx % 2 === 0 ? '#FFFFFF' : '#F1F5F9';
     ctx.fillRect(32, y, width - 64, rowHeight - 4);
 
-    ctx.strokeStyle = '#E5E5E0';
+    ctx.strokeStyle = '#CBD5E1';
     ctx.lineWidth = 1;
     ctx.strokeRect(32, y, width - 64, rowHeight - 4);
 
     // Row Text
-    ctx.fillStyle = '#0A0A0A';
+    ctx.fillStyle = '#0B192C';
     ctx.textAlign = 'right';
     ctx.font = 'bold 18px Vazirmatn, sans-serif';
     ctx.fillText(
@@ -119,17 +115,17 @@ async function generateInvoiceCanvasBlob(
       y + 32
     );
 
-    ctx.fillStyle = '#555555';
+    ctx.fillStyle = '#475569';
     ctx.font = '14px Vazirmatn, sans-serif';
     ctx.fillText(entry.carpet.categoryLabel, width - 48, y + 56);
 
     // Code badge
-    ctx.fillStyle = '#0A0A0A';
+    ctx.fillStyle = '#0B192C';
     ctx.font = 'bold 16px monospace';
     ctx.fillText(entry.carpet.code, width - 310, y + 42);
 
     // Size & Dimensions
-    ctx.fillStyle = '#111111';
+    ctx.fillStyle = '#0F172A';
     ctx.font = 'bold 16px Vazirmatn, sans-serif';
     const dimStr =
       entry.carpet.lengthCm && entry.carpet.widthCm
@@ -141,17 +137,17 @@ async function generateInvoiceCanvasBlob(
 
     // Quantity
     ctx.textAlign = 'left';
-    ctx.fillStyle = '#0A0A0A';
+    ctx.fillStyle = '#0B192C';
     ctx.font = 'bold 18px Vazirmatn, sans-serif';
     ctx.fillText(`${toPersianDigits(entry.quantity)} تخته`, 56, y + 42);
   });
 
   // Footer Totals Box
   const footerY = headerHeight + cart.length * rowHeight + 16;
-  ctx.fillStyle = '#0A0A0A';
+  ctx.fillStyle = '#0B192C';
   ctx.fillRect(32, footerY, width - 64, 100);
 
-  ctx.fillStyle = '#FACC15';
+  ctx.fillStyle = '#FFFFFF';
   ctx.textAlign = 'right';
   ctx.font = 'bold 22px Vazirmatn, sans-serif';
   ctx.fillText(
@@ -160,7 +156,7 @@ async function generateInvoiceCanvasBlob(
     footerY + 44
   );
 
-  ctx.fillStyle = '#FFFFFF';
+  ctx.fillStyle = '#BAE6FD';
   ctx.font = '18px Vazirmatn, sans-serif';
   ctx.fillText(
     `مجموع مساحت کل فرش‌ها: ${toPersianDigits(totalAreaSqM)} متر مربع`,
@@ -198,7 +194,7 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
         day: '2-digit',
       }).format(new Date());
     } catch {
-      return '۱۴۰۵/۰۸/۰۶';
+      return '۱۴۰۵/۰۸/۲۰';
     }
   }, []);
 
@@ -217,7 +213,6 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
     return area.toFixed(2);
   }, [cart]);
 
-  // Formatted Plain-Text Invoice for WhatsApp / Telegram / SMS / Copy
   const invoicePlainText = useMemo(() => {
     const lines: string[] = [
       '📋 *فاکتور سفارش کاتالوگ فرش ماشینی پشمی*',
@@ -323,7 +318,6 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
         return;
       }
 
-      // Fallback if Web Share API is not supported on desktop browser: download image + copy text
       await handleCopyInvoiceText();
       await handleDownloadInvoiceImage();
     } catch {
@@ -340,25 +334,25 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
 
   return (
     <div className="absolute inset-0 z-50 flex flex-col justify-end overflow-hidden" dir="rtl">
-      {/* Backdrop */}
+      {/* Frosted Backdrop */}
       <div
-        className="absolute inset-0 bg-black/80 backdrop-blur-sm transition-opacity"
+        className="absolute inset-0 bg-[#050C16]/75 backdrop-blur-sm transition-opacity"
         onClick={onClose}
       />
 
-      {/* Bottom-Sheet / Full Mobile Invoice Panel */}
-      <div className="relative z-10 w-full h-[92%] bg-[#0E0E0E] text-white rounded-t-3xl border-t-2 border-[#FACC15] flex flex-col shadow-2xl overflow-hidden">
-        {/* Top Grab Handle & Header */}
-        <div className="px-4 pt-3 pb-3 bg-[#141414] border-b border-neutral-800 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <div className="w-9 h-9 rounded-xl bg-[#FACC15] text-black flex items-center justify-center font-bold">
+      {/* Frosted Matte Glass Navy Blue & White Bottom Sheet */}
+      <div className="relative z-10 w-full h-[92%] bg-[#0B192C]/92 backdrop-blur-2xl text-white rounded-t-3xl border-t border-white/25 flex flex-col shadow-2xl overflow-hidden">
+        {/* Top Header */}
+        <div className="px-4 pt-3.5 pb-3 bg-white/5 border-b border-white/15 flex items-center justify-between">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-white text-[#0B192C] flex items-center justify-center font-bold shadow-sm">
               <ShoppingBag className="w-5 h-5" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-white leading-tight">
+              <h2 className="text-base font-extrabold text-white leading-tight">
                 سبد خرید و فاکتور سفارش فرش
               </h2>
-              <p className="text-[11px] text-neutral-400">
+              <p className="text-[11px] text-sky-200">
                 شماره فاکتور: {toPersianDigits(invoiceNumber)} · تاریخ: {todayPersian}
               </p>
             </div>
@@ -367,7 +361,7 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="min-w-[38px] min-h-[38px] rounded-xl bg-neutral-800 hover:bg-[#FACC15] hover:text-black flex items-center justify-center transition-colors cursor-pointer"
+            className="min-w-[38px] min-h-[38px] rounded-xl bg-white/10 hover:bg-white hover:text-[#0B192C] border border-white/20 flex items-center justify-center transition-colors cursor-pointer"
             aria-label="بستن سبد خرید"
           >
             <X className="w-5 h-5" />
@@ -376,38 +370,37 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
 
         {cart.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center p-6 text-center gap-3">
-            <div className="w-14 h-14 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center text-neutral-500">
+            <div className="w-14 h-14 rounded-2xl bg-white/10 border border-white/20 flex items-center justify-center text-sky-200">
               <ShoppingBag className="w-7 h-7" />
             </div>
-            <p className="text-sm font-bold text-neutral-300">
+            <p className="text-sm font-bold text-white">
               سبد خرید شما در حال حاضر خالی است
             </p>
-            <p className="text-xs text-neutral-500 max-w-xs leading-relaxed">
-              هنگام ورق زدن کاتالوگ، روی دکمه «افزودن به سبد خرید» در پایین قاب هر فرش بزنید تا فاکتور شما آماده شود.
+            <p className="text-xs text-slate-300 max-w-xs leading-relaxed">
+              هنگام ورق زدن کاتالوگ، روی دکمه «افزودن به سبد خرید» در پایین صفحه بزنید تا فاکتور شما آماده شود.
             </p>
             <button
               type="button"
               onClick={onClose}
-              className="mt-2 px-5 py-2.5 rounded-xl bg-[#FACC15] text-black text-xs font-bold cursor-pointer"
+              className="mt-2 px-5 py-2.5 rounded-xl bg-white text-[#0B192C] text-xs font-extrabold cursor-pointer shadow-md"
             >
               بازگشت به کاتالوگ فرش
             </button>
           </div>
         ) : (
           <>
-            {/* Scrollable Invoice Content */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4">
-              {/* Customer Name Input for Official Invoice */}
-              <div className="p-3 rounded-2xl bg-[#161616] border border-neutral-800 space-y-2">
+              {/* Customer Name Input */}
+              <div className="p-3 rounded-2xl bg-white/10 border border-white/20 space-y-2">
                 <div className="flex items-center justify-between">
-                  <label className="text-xs font-bold text-[#FACC15] flex items-center gap-1.5">
+                  <label className="text-xs font-bold text-sky-200 flex items-center gap-1.5">
                     <FileText className="w-3.5 h-3.5" />
                     <span>مشخصات سفارش‌دهنده در فاکتور (اختیاری)</span>
                   </label>
                   <button
                     type="button"
                     onClick={onClearCart}
-                    className="text-[11px] text-red-400 hover:underline flex items-center gap-1 cursor-pointer"
+                    className="text-[11px] text-rose-300 hover:underline flex items-center gap-1 cursor-pointer"
                   >
                     <Trash2 className="w-3 h-3" />
                     <span>خالی کردن سبد</span>
@@ -418,36 +411,34 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                   value={customerName}
                   onChange={(e) => setCustomerName(e.target.value)}
                   placeholder="نام مشتری، فروشگاه یا توضیحات سفارش را وارد کنید..."
-                  className="w-full h-10 px-3 rounded-xl bg-black border border-neutral-700 text-xs text-white placeholder:text-neutral-500 focus:border-[#FACC15] focus:outline-none"
+                  className="w-full h-10 px-3 rounded-xl bg-[#07111E]/80 border border-white/20 text-xs text-white placeholder:text-slate-400 focus:border-white focus:outline-none"
                 />
               </div>
 
               {/* Official Printable/Shareable Invoice Card Preview */}
-              <div className="rounded-2xl bg-[#FAF9F5] text-[#0A0A0A] border-2 border-[#FACC15] overflow-hidden shadow-lg">
-                {/* Invoice Header */}
-                <div className="bg-[#0A0A0A] text-white px-3.5 py-3 flex items-center justify-between border-b-2 border-[#FACC15]">
+              <div className="rounded-2xl bg-white text-[#0B192C] border border-white/40 overflow-hidden shadow-xl">
+                <div className="bg-[#0B192C] text-white px-3.5 py-3 flex items-center justify-between border-b border-white/20">
                   <div>
-                    <div className="text-sm font-bold text-[#FACC15]">
+                    <div className="text-sm font-extrabold text-white">
                       پیش‌فاکتور سفارش فرش پشمی
                     </div>
                     {customerName.trim() && (
-                      <div className="text-[11px] text-neutral-300 mt-0.5">
+                      <div className="text-[11px] text-sky-200 mt-0.5">
                         سفارش‌دهنده: {customerName.trim()}
                       </div>
                     )}
                   </div>
-                  <div className="text-left text-[11px] text-neutral-300 tabular-nums">
+                  <div className="text-left text-[11px] text-slate-300 tabular-nums">
                     <div>شماره: #{toPersianDigits(invoiceNumber)}</div>
                     <div>تاریخ: {todayPersian}</div>
                   </div>
                 </div>
 
-                {/* Invoice Items List */}
-                <div className="divide-y divide-neutral-200">
+                <div className="divide-y divide-slate-200">
                   {cart.map((entry, idx) => (
                     <div
                       key={entry.carpet.id}
-                      className="p-2.5 flex items-center justify-between gap-2 hover:bg-neutral-100 transition-colors"
+                      className="p-2.5 flex items-center justify-between gap-2 hover:bg-slate-50 transition-colors"
                     >
                       <button
                         type="button"
@@ -467,13 +458,13 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                               e.currentTarget.src = fallback;
                             }
                           }}
-                          className="w-11 h-14 rounded-lg object-cover border border-black/20 shrink-0 bg-black"
+                          className="w-11 h-14 rounded-lg object-cover border border-slate-300 shrink-0 bg-[#07111E]"
                         />
                         <div className="min-w-0">
-                          <div className="text-xs font-bold text-black truncate">
+                          <div className="text-xs font-extrabold text-[#0B192C] truncate">
                             {toPersianDigits(idx + 1)}. نقش {entry.carpet.persianName}
                           </div>
-                          <div className="text-[11px] text-neutral-700 font-medium mt-0.5">
+                          <div className="text-[11px] text-slate-600 font-medium mt-0.5">
                             <span>{entry.carpet.sizeLabel}</span>
                             {entry.carpet.lengthCm && entry.carpet.widthCm && (
                               <span className="tabular-nums">
@@ -483,29 +474,28 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                               </span>
                             )}
                           </div>
-                          <div className="inline-block mt-1 px-1.5 py-0.5 rounded bg-[#0A0A0A] text-[#FACC15] font-mono-code text-[10px] font-bold">
+                          <div className="inline-block mt-1 px-2 py-0.5 rounded-md bg-[#0B192C] text-white font-mono-code text-[10px] font-bold">
                             کد: {entry.carpet.code}
                           </div>
                         </div>
                       </button>
 
-                      {/* Quantity Controls */}
-                      <div className="flex items-center gap-1.5 bg-neutral-200/80 p-1 rounded-xl shrink-0">
+                      <div className="flex items-center gap-1.5 bg-slate-100 p-1 rounded-xl shrink-0">
                         <button
                           type="button"
                           onClick={() => onUpdateQuantity(entry.carpet.id, 1)}
-                          className="w-7 h-7 rounded-lg bg-[#0A0A0A] text-[#FACC15] flex items-center justify-center active:scale-90 cursor-pointer"
+                          className="w-7 h-7 rounded-lg bg-[#0B192C] text-white flex items-center justify-center active:scale-90 cursor-pointer"
                           title="افزایش"
                         >
                           <Plus className="w-3.5 h-3.5" />
                         </button>
-                        <span className="w-6 text-center text-xs font-bold text-black tabular-nums">
+                        <span className="w-6 text-center text-xs font-extrabold text-[#0B192C] tabular-nums">
                           {toPersianDigits(entry.quantity)}
                         </span>
                         <button
                           type="button"
                           onClick={() => onUpdateQuantity(entry.carpet.id, -1)}
-                          className="w-7 h-7 rounded-lg bg-white text-black border border-neutral-300 flex items-center justify-center active:scale-90 cursor-pointer"
+                          className="w-7 h-7 rounded-lg bg-white text-[#0B192C] border border-slate-300 flex items-center justify-center active:scale-90 cursor-pointer"
                           title="کاهش یا حذف"
                         >
                           <Minus className="w-3.5 h-3.5" />
@@ -515,17 +505,16 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                   ))}
                 </div>
 
-                {/* Invoice Totals Footer */}
-                <div className="bg-[#141414] text-white px-3.5 py-3 flex items-center justify-between border-t border-neutral-300">
+                <div className="bg-[#0B192C] text-white px-3.5 py-3 flex items-center justify-between border-t border-slate-200">
                   <div className="text-xs">
-                    <span className="text-neutral-400">تعداد کل سفارش: </span>
-                    <strong className="text-[#FACC15] text-sm tabular-nums">
+                    <span className="text-slate-300">تعداد کل سفارش: </span>
+                    <strong className="text-white text-sm tabular-nums">
                       {toPersianDigits(totalCount)} تخته فرش
                     </strong>
                   </div>
                   <div className="text-xs">
-                    <span className="text-neutral-400">مجموع متراژ: </span>
-                    <strong className="text-white text-sm tabular-nums">
+                    <span className="text-slate-300">مجموع متراژ: </span>
+                    <strong className="text-sky-200 text-sm tabular-nums">
                       {toPersianDigits(totalAreaSqM)} متر مربع
                     </strong>
                   </div>
@@ -534,13 +523,12 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
             </div>
 
             {/* Bottom Sticky Share & Export Invoice Bar */}
-            <div className="p-3.5 bg-[#141414] border-t border-neutral-800 space-y-2">
-              {/* Primary Native Share Invoice Button (Image + Text) */}
+            <div className="p-3.5 bg-white/5 border-t border-white/15 space-y-2">
               <button
                 type="button"
                 onClick={handleNativeShareInvoice}
                 disabled={isSharingImage}
-                className="w-full h-11 rounded-xl bg-[#FACC15] hover:bg-yellow-300 text-black text-xs sm:text-sm font-bold flex items-center justify-center gap-2 shadow-md active:scale-[0.99] transition-all cursor-pointer"
+                className="w-full h-11 rounded-xl bg-white hover:bg-slate-100 text-[#0B192C] text-xs sm:text-sm font-extrabold flex items-center justify-center gap-2 shadow-lg active:scale-[0.99] transition-all cursor-pointer"
               >
                 <Share2 className="w-4 h-4" />
                 <span>
@@ -550,15 +538,14 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                 </span>
               </button>
 
-              {/* Secondary Quick Share Actions: WhatsApp, Telegram, Download PNG, Copy Text */}
               <div className="grid grid-cols-4 gap-1.5">
                 <a
                   href={whatsappShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+                  className="h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
                 >
-                  <Send className="w-3 h-3 text-[#FACC15]" />
+                  <Send className="w-3 h-3 text-sky-200" />
                   <span>واتساپ</span>
                 </a>
 
@@ -566,9 +553,9 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                   href={telegramShareUrl}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className="h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
+                  className="h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors"
                 >
-                  <Send className="w-3 h-3 text-[#FACC15]" />
+                  <Send className="w-3 h-3 text-sky-200" />
                   <span>تلگرام</span>
                 </a>
 
@@ -576,25 +563,25 @@ export const CartInvoiceModal: React.FC<CartInvoiceModalProps> = ({
                   type="button"
                   onClick={handleDownloadInvoiceImage}
                   disabled={isSharingImage}
-                  className="h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                  className="h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
-                  <Download className="w-3 h-3 text-[#FACC15]" />
+                  <Download className="w-3 h-3 text-sky-200" />
                   <span>عکس فاکتور</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={handleCopyInvoiceText}
-                  className="h-9 rounded-xl bg-neutral-800 hover:bg-neutral-700 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
+                  className="h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/15 text-white text-[11px] font-bold flex items-center justify-center gap-1 transition-colors cursor-pointer"
                 >
                   {copiedText ? (
                     <>
-                      <Check className="w-3 h-3 text-[#FACC15]" />
-                      <span className="text-[#FACC15]">کپی شد</span>
+                      <Check className="w-3 h-3 text-sky-200" />
+                      <span className="text-sky-200">کپی شد</span>
                     </>
                   ) : (
                     <>
-                      <Copy className="w-3 h-3 text-[#FACC15]" />
+                      <Copy className="w-3 h-3 text-sky-200" />
                       <span>کپی متن</span>
                     </>
                   )}

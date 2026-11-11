@@ -1,13 +1,16 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ZoomIn,
   ZoomOut,
-  Eye,
   Maximize2,
   Minimize2,
   ShoppingBag,
   Plus,
   Minus,
+  ChevronLeft,
+  ChevronRight,
+  Image as ImageIcon,
+  Camera,
 } from 'lucide-react';
 import { OfflineFilterSettings, toPersianDigits } from '../services/carpetNaming';
 import { CarpetItem } from '../services/driveService';
@@ -20,74 +23,47 @@ interface CarpetFramePageProps {
   pageNumber: number;
   totalPages: number;
   filter: OfflineFilterSettings;
-  frameStyle: FrameTemplateStyle;
   cartQuantity: number;
   onAddToCart: (item: CarpetItem) => void;
   onUpdateCartQuantity: (itemId: string, delta: number) => void;
+  onNextPage?: () => void;
+  onPrevPage?: () => void;
+  hasNextPage?: boolean;
+  hasPrevPage?: boolean;
 }
 
 export const CarpetFramePage: React.FC<CarpetFramePageProps> = ({
   item,
-  pageNumber,
-  totalPages,
   filter,
-  frameStyle,
   cartQuantity,
   onAddToCart,
   onUpdateCartQuantity,
+  onNextPage,
+  onPrevPage,
+  hasNextPage = false,
+  hasPrevPage = false,
 }) => {
-  const [showOriginalHold, setShowOriginalHold] = useState(false);
+  // Slide 1 ('white') = White background 3:4 photo, Slide 2 ('perspective') = Perspective angle photo
+  const [activeSlide, setActiveSlide] = useState<'white' | 'perspective'>('white');
   const [zoomLevel, setZoomLevel] = useState(1);
-  const [fitMode, setFitMode] = useState<'cover' | 'contain'>('cover');
+  const [fitMode, setFitMode] = useState<'cover' | 'contain'>('contain');
+
+  // Always reset to Slide 1 (White Background) and 1x zoom when switching carpets
+  useEffect(() => {
+    setActiveSlide('white');
+    setZoomLevel(1);
+  }, [item.id]);
 
   const toggleZoom = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setZoomLevel((prev) => (prev === 1 ? 1.85 : 1));
+    setZoomLevel((prev) => (prev === 1 ? 1.75 : 1));
   };
 
   const toggleFitMode = (e: React.MouseEvent) => {
     e.stopPropagation();
-    setFitMode((prev) => (prev === 'cover' ? 'contain' : 'cover'));
+    setZoomLevel(1);
+    setFitMode((prev) => (prev === 'contain' ? 'cover' : 'contain'));
   };
-
-  const frameTheme = {
-    ivory_gold: {
-      outerBg: 'bg-[#FAF9F5] text-[#0A0A0A] border-2 border-[#FACC15]',
-      innerBorder: 'border border-[#0A0A0A]/25',
-      imageWellBg: 'bg-[#0E0E0E] border-2 border-[#0A0A0A]',
-      plaqueBg: 'bg-[#FFFFFF] border-t-2 border-[#0A0A0A]',
-      titleColor: 'text-[#0A0A0A]',
-      metaColor: 'text-neutral-600',
-      codeBox: 'bg-[#0A0A0A] text-[#FACC15] border border-[#FACC15]',
-      cornerMark: 'border-[#0A0A0A]',
-      controlBtn: 'bg-neutral-100 hover:bg-[#FACC15] text-[#0A0A0A] border border-neutral-300',
-      cartBtn: 'bg-[#0A0A0A] hover:bg-neutral-800 text-[#FACC15] border border-[#FACC15]',
-    },
-    obsidian_yellow: {
-      outerBg: 'bg-[#111111] text-white border-2 border-[#FACC15]',
-      innerBorder: 'border border-[#FACC15]/35',
-      imageWellBg: 'bg-[#070707] border-2 border-[#FACC15]/80',
-      plaqueBg: 'bg-[#161616] border-t-2 border-[#FACC15]',
-      titleColor: 'text-white',
-      metaColor: 'text-neutral-400',
-      codeBox: 'bg-[#FACC15] text-[#0A0A0A] border border-white/20',
-      cornerMark: 'border-[#FACC15]',
-      controlBtn: 'bg-neutral-800 hover:bg-[#FACC15] hover:text-black text-neutral-200 border border-neutral-700',
-      cartBtn: 'bg-[#FACC15] hover:bg-yellow-300 text-[#0A0A0A] border border-white/20',
-    },
-    saffron_modern: {
-      outerBg: 'bg-[#FACC15] text-[#0A0A0A] border-2 border-white',
-      innerBorder: 'border border-[#0A0A0A]/30',
-      imageWellBg: 'bg-[#0A0A0A] border-2 border-[#0A0A0A]',
-      plaqueBg: 'bg-[#0A0A0A] text-white border-t-2 border-[#0A0A0A]',
-      titleColor: 'text-[#FACC15]',
-      metaColor: 'text-neutral-300',
-      codeBox: 'bg-white text-[#0A0A0A] border border-[#FACC15]',
-      cornerMark: 'border-[#0A0A0A]',
-      controlBtn: 'bg-neutral-800 hover:bg-white hover:text-black text-white border border-neutral-700',
-      cartBtn: 'bg-[#FACC15] hover:bg-yellow-300 text-[#0A0A0A] border border-black',
-    },
-  }[frameStyle];
 
   const dimensionsText =
     item.lengthCm && item.widthCm
@@ -95,139 +71,257 @@ export const CarpetFramePage: React.FC<CarpetFramePageProps> = ({
       : item.sizeLabel;
 
   return (
-    <div
-      className={`relative w-full h-full rounded-2xl p-2 flex flex-col justify-between shadow-[0_16px_40px_rgba(0,0,0,0.75)] transition-colors duration-200 ${frameTheme.outerBg}`}
-    >
-      <div className={`relative w-full h-full rounded-xl flex flex-col overflow-hidden ${frameTheme.innerBorder}`}>
-        <span className={`pointer-events-none absolute top-1.5 right-1.5 w-2.5 h-2.5 border-t-2 border-r-2 z-20 ${frameTheme.cornerMark}`} />
-        <span className={`pointer-events-none absolute top-1.5 left-1.5 w-2.5 h-2.5 border-t-2 border-l-2 z-20 ${frameTheme.cornerMark}`} />
+    <div className="relative w-full h-full flex flex-col justify-between overflow-hidden bg-gradient-to-b from-[#07111E] via-[#0B192C] to-[#07111E] pt-14 pb-2.5 px-2.5">
+      {/* TOP BAR BELOW HEADER: 2-SLIDE SWITCHER + PERSIAN ZOOM BUTTONS */}
+      <div
+        className="relative z-20 flex flex-col gap-1.5 shrink-0 mb-1.5"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {/* Row A: 2-Slide Segmented Selector (اسلاید ۱: بک‌گراند سفید | اسلاید ۲: زاویه پرسپکتیو) */}
+        <div className="grid grid-cols-2 gap-1.5 p-1 rounded-2xl bg-[#0B192C]/80 backdrop-blur-xl border border-white/20 shadow-lg">
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSlide('white');
+              setZoomLevel(1);
+            }}
+            className={`h-9 px-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              activeSlide === 'white'
+                ? 'bg-white text-[#0B192C] shadow-md'
+                : 'text-slate-200 hover:bg-white/10'
+            }`}
+          >
+            <ImageIcon className="w-3.5 h-3.5 shrink-0" />
+            <span>اسلاید ۱: از بالا (زمینه سفید)</span>
+          </button>
 
-        {/* ZONE 1: Dedicated Carpet Photo Well (بدون هیچ متن مزاحم روی عکس فرش) */}
-        <div className={`relative flex-1 min-h-0 w-full overflow-hidden ${frameTheme.imageWellBg}`}>
+          <button
+            type="button"
+            onClick={() => {
+              setActiveSlide('perspective');
+              setZoomLevel(1);
+            }}
+            className={`h-9 px-2.5 rounded-xl text-xs font-extrabold flex items-center justify-center gap-1.5 transition cursor-pointer ${
+              activeSlide === 'perspective'
+                ? 'bg-white text-[#0B192C] shadow-md'
+                : 'text-slate-200 hover:bg-white/10'
+            }`}
+          >
+            <Camera className="w-3.5 h-3.5 shrink-0" />
+            <span>اسلاید ۲: زاویه پرسپکتیو</span>
+          </button>
+        </div>
+
+        {/* Row B: Larger Zoom & Frame Fit Buttons with Explicit Persian Labels */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-1.5">
+            <button
+              type="button"
+              onClick={toggleZoom}
+              className={`h-8 px-3 rounded-xl backdrop-blur-xl border text-[11px] font-bold flex items-center gap-1.5 transition shadow-md cursor-pointer ${
+                zoomLevel > 1
+                  ? 'bg-white text-[#0B192C] border-white'
+                  : 'bg-[#0B192C]/75 hover:bg-[#13294B]/90 text-white border-white/25'
+              }`}
+            >
+              {zoomLevel > 1 ? (
+                <>
+                  <ZoomOut className="w-3.5 h-3.5 shrink-0" />
+                  <span>بستن بزرگ‌نمایی</span>
+                </>
+              ) : (
+                <>
+                  <ZoomIn className="w-3.5 h-3.5 shrink-0 text-sky-300" />
+                  <span>بزرگ‌نمایی بافت</span>
+                </>
+              )}
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleFitMode}
+              className={`h-8 px-3 rounded-xl backdrop-blur-xl border text-[11px] font-bold flex items-center gap-1.5 transition shadow-md cursor-pointer ${
+                fitMode === 'cover'
+                  ? 'bg-white text-[#0B192C] border-white'
+                  : 'bg-[#0B192C]/75 hover:bg-[#13294B]/90 text-white border-white/25'
+              }`}
+            >
+              {fitMode === 'contain' ? (
+                <>
+                  <Maximize2 className="w-3.5 h-3.5 shrink-0 text-sky-300" />
+                  <span>پر کردن کادر ۳:۴</span>
+                </>
+              ) : (
+                <>
+                  <Minimize2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>نمای کامل فرش</span>
+                </>
+              )}
+            </button>
+          </div>
+
+          {/* Slide Dots Indicator */}
+          <button
+            type="button"
+            onClick={() =>
+              setActiveSlide((prev) => (prev === 'white' ? 'perspective' : 'white'))
+            }
+            className="h-8 px-2.5 rounded-xl bg-[#0B192C]/75 backdrop-blur-xl border border-white/20 text-[11px] font-bold text-sky-200 flex items-center gap-1.5 cursor-pointer"
+            title="تغییر اسلاید عکس"
+          >
+            <span>عکس {activeSlide === 'white' ? '۱ از ۲' : '۲ از ۲'}</span>
+            <span className="flex items-center gap-1">
+              <span
+                className={`w-2 h-2 rounded-full transition-all ${
+                  activeSlide === 'white' ? 'bg-white scale-110' : 'bg-white/30'
+                }`}
+              />
+              <span
+                className={`w-2 h-2 rounded-full transition-all ${
+                  activeSlide === 'perspective' ? 'bg-white scale-110' : 'bg-white/30'
+                }`}
+              />
+            </span>
+          </button>
+        </div>
+      </div>
+
+      {/* CENTER: DEDICATED 3:4 PORTRAIT CARPET FRAME */}
+      <div className="relative flex-1 min-h-0 w-full flex items-center justify-center overflow-hidden my-0.5">
+        <div className="relative aspect-[3/4] h-full max-h-full max-w-full rounded-2xl overflow-hidden shadow-[0_18px_50px_rgba(0,0,0,0.75)] bg-[#07111E] border-2 border-white/30">
           <OfflineCarpetCanvas
             item={item}
+            activeSlide={activeSlide}
             filter={filter}
-            showOriginalHold={showOriginalHold}
             zoomLevel={zoomLevel}
             fitMode={fitMode}
           />
+
+          {/* Quick Side Pill inside 3:4 Frame to Toggle Between Slide 1 & Slide 2 */}
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              setActiveSlide((prev) => (prev === 'white' ? 'perspective' : 'white'));
+              setZoomLevel(1);
+            }}
+            onPointerDown={(e) => e.stopPropagation()}
+            className="absolute top-2.5 right-2.5 z-20 px-2.5 py-1 rounded-xl bg-[#0B192C]/85 hover:bg-[#0B192C] backdrop-blur-md text-white border border-white/25 text-[11px] font-bold flex items-center gap-1.5 shadow-md transition cursor-pointer"
+          >
+            {activeSlide === 'white' ? (
+              <>
+                <Camera className="w-3.5 h-3.5 text-sky-300" />
+                <span>مشاهده عکس پرسپکتیو (اسلاید ۲)</span>
+              </>
+            ) : (
+              <>
+                <ImageIcon className="w-3.5 h-3.5 text-sky-300" />
+                <span>مشاهده عکس از بالا زمینه سفید (اسلاید ۱)</span>
+              </>
+            )}
+          </button>
+        </div>
+      </div>
+
+      {/* BOTTOM: FROSTED MATTE GLASS NAVY BLUE & WHITE INFO + CART OVERLAY */}
+      <div
+        className="relative z-20 shrink-0 rounded-2xl bg-[#0B192C]/80 backdrop-blur-xl border border-white/20 px-3.5 py-2.5 shadow-[0_12px_36px_rgba(0,0,0,0.65)] flex flex-col gap-2 mt-1"
+        onClick={(e) => e.stopPropagation()}
+        onPointerDown={(e) => e.stopPropagation()}
+      >
+        {/* Row 1: Carpet Persian Name, Size & Dimensions, and Code Badge */}
+        <div className="flex items-center justify-between gap-2">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-5 bg-white rounded-full shrink-0" />
+              <h2 className="text-base font-extrabold text-white tracking-tight truncate">
+                نقش {item.persianName}
+              </h2>
+            </div>
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-slate-200 truncate mt-0.5 pr-3.5">
+              <span className="text-sky-200 font-bold">{item.sizeLabel}</span>
+              <span className="opacity-50">·</span>
+              <span className="tabular-nums text-white">{dimensionsText}</span>
+              <span className="opacity-50">·</span>
+              <span className="text-slate-300">{item.categoryLabel}</span>
+            </div>
+          </div>
+
+          {/* Frosted White/Navy Code Tag */}
+          <div className="px-2.5 py-1.5 rounded-xl bg-white/15 backdrop-blur-md border border-white/30 text-white shrink-0 text-left">
+            <span className="text-[9px] text-sky-200 block leading-none mb-0.5">کد فرش</span>
+            <span className="font-mono-code text-xs font-extrabold tracking-wider block leading-none">
+              {item.code}
+            </span>
+          </div>
         </div>
 
-        {/* ZONE 2: Dedicated Plaque Inside the Frame Below the Photo (مشخصات، متراژ و افزودن به سبد خرید) */}
-        <div
-          className={`shrink-0 px-3 py-2.5 flex flex-col gap-2 transition-colors ${frameTheme.plaqueBg}`}
-          onClick={(e) => e.stopPropagation()}
-        >
-          {/* Row 1: Two-Word Persian Name + Size/Dimensions (Right) & Carpet Code (Left) */}
-          <div className="flex items-center justify-between gap-2">
-            <div className="flex items-center gap-2 min-w-0">
-              <span className="w-1.5 h-8 bg-[#FACC15] rounded-full shrink-0" />
-              <div className="min-w-0">
-                <h2
-                  className={`text-lg font-bold tracking-tight truncate leading-tight ${frameTheme.titleColor}`}
-                >
-                  نقش {item.persianName}
-                </h2>
-                <div className={`flex items-center gap-1.5 text-[11px] font-medium truncate mt-0.5 ${frameTheme.metaColor}`}>
-                  <strong className={frameTheme.titleColor}>{item.sizeLabel}</strong>
-                  <span aria-hidden="true">·</span>
-                  <span className="tabular-nums">{dimensionsText}</span>
-                  <span aria-hidden="true">·</span>
-                  <span>{item.categoryLabel}</span>
-                </div>
-              </div>
-            </div>
+        {/* Row 2: Prev / Add to Cart / Next Controls */}
+        <div className="flex items-center justify-between gap-2">
+          {/* Prev Carpet Button */}
+          <button
+            type="button"
+            onClick={onPrevPage}
+            disabled={!hasPrevPage}
+            className={`h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-1 transition shrink-0 ${
+              !hasPrevPage
+                ? 'opacity-30 pointer-events-none bg-white/5 text-slate-400 border border-white/10'
+                : 'bg-white/15 hover:bg-white/25 text-white border border-white/25 active:scale-95 cursor-pointer'
+            }`}
+          >
+            <ChevronRight className="w-4 h-4" />
+            <span>فرش قبلی</span>
+          </button>
 
-            {/* Read-only Carpet Code Plaque */}
-            <div
-              className={`px-2.5 py-1.5 rounded-lg flex flex-col text-left shrink-0 shadow-sm ${frameTheme.codeBox}`}
+          {/* Center: Crisp White & Navy Add to Cart Button */}
+          {cartQuantity === 0 ? (
+            <button
+              type="button"
+              onClick={() => onAddToCart(item)}
+              className="flex-1 h-9 px-3 rounded-xl bg-white hover:bg-slate-100 text-[#0B192C] text-xs font-extrabold flex items-center justify-center gap-1.5 transition active:scale-95 cursor-pointer shadow-md"
             >
-              <span className="text-[8px] uppercase tracking-wider opacity-75 font-semibold leading-none mb-0.5">
-                کد فرش
+              <ShoppingBag className="w-3.5 h-3.5 text-[#0B192C]" />
+              <span>افزودن به سبد خرید</span>
+            </button>
+          ) : (
+            <div className="flex-1 h-9 px-2 rounded-xl bg-white text-[#0B192C] flex items-center justify-between shadow-md">
+              <button
+                type="button"
+                onClick={() => onUpdateCartQuantity(item.id, 1)}
+                className="w-6 h-6 rounded-lg bg-[#0B192C] text-white flex items-center justify-center active:scale-90 cursor-pointer"
+                title="افزایش تعداد"
+              >
+                <Plus className="w-3.5 h-3.5" />
+              </button>
+              <span className="text-xs font-extrabold tabular-nums">
+                {toPersianDigits(cartQuantity)} تخته در سبد
               </span>
-              <span className="font-mono-code text-xs font-bold tracking-wider leading-none">
-                {item.code}
-              </span>
-            </div>
-          </div>
-
-          {/* Row 2: Add to Cart Button + Image View Tools */}
-          <div className="flex items-center justify-between gap-1.5 pt-1.5 border-t border-current/10">
-            {/* Add to Cart / Quantity Selector */}
-            {cartQuantity === 0 ? (
               <button
                 type="button"
-                onClick={() => onAddToCart(item)}
-                className={`min-h-[36px] px-3.5 py-1.5 rounded-lg text-xs font-bold flex items-center justify-center gap-1.5 transition-all active:scale-95 cursor-pointer shrink-0 shadow-sm ${frameTheme.cartBtn}`}
+                onClick={() => onUpdateCartQuantity(item.id, -1)}
+                className="w-6 h-6 rounded-lg bg-slate-200 hover:bg-[#0B192C] hover:text-white text-[#0B192C] flex items-center justify-center active:scale-90 cursor-pointer"
+                title="کاهش یا حذف"
               >
-                <ShoppingBag className="w-3.5 h-3.5" />
-                <span>افزودن به سبد خرید</span>
-              </button>
-            ) : (
-              <div className="min-h-[36px] px-2 py-1 rounded-lg bg-[#FACC15] text-black border border-black/20 flex items-center gap-2 shrink-0 shadow-sm">
-                <button
-                  type="button"
-                  onClick={() => onUpdateCartQuantity(item.id, 1)}
-                  className="w-6 h-6 rounded bg-black text-[#FACC15] flex items-center justify-center active:scale-90 cursor-pointer"
-                  title="افزایش تعداد"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-xs font-bold tabular-nums px-1">
-                  {toPersianDigits(cartQuantity)} تخته در سبد
-                </span>
-                <button
-                  type="button"
-                  onClick={() => onUpdateCartQuantity(item.id, -1)}
-                  className="w-6 h-6 rounded bg-black/15 hover:bg-black hover:text-white text-black flex items-center justify-center active:scale-90 cursor-pointer"
-                  title="کاهش یا حذف"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-              </div>
-            )}
-
-            {/* View Controls (Hold Compare, Fit Mode, Zoom, Page Counter) */}
-            <div className="flex items-center gap-1">
-              <button
-                type="button"
-                onPointerDown={() => setShowOriginalHold(true)}
-                onPointerUp={() => setShowOriginalHold(false)}
-                onPointerLeave={() => setShowOriginalHold(false)}
-                title="نگه‌دارید: مقایسه قبل از فیلتر آفلاین"
-                className={`min-h-[34px] px-2 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${frameTheme.controlBtn}`}
-              >
-                <Eye className="w-3.5 h-3.5 shrink-0" />
-                <span>قبل فیلتر</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleFitMode}
-                title={fitMode === 'cover' ? 'نمایش کامل عکس' : 'پر کردن قاب'}
-                className={`min-h-[34px] px-2 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${frameTheme.controlBtn}`}
-              >
-                {fitMode === 'cover' ? (
-                  <Minimize2 className="w-3.5 h-3.5 shrink-0" />
-                ) : (
-                  <Maximize2 className="w-3.5 h-3.5 shrink-0" />
-                )}
-              </button>
-
-              <button
-                type="button"
-                onClick={toggleZoom}
-                title="ذره‌بین بافت فرش"
-                className={`min-h-[34px] px-2 rounded-lg text-[10px] font-medium flex items-center justify-center gap-1 transition-colors whitespace-nowrap ${frameTheme.controlBtn}`}
-              >
-                {zoomLevel > 1 ? (
-                  <ZoomOut className="w-3.5 h-3.5 shrink-0" />
-                ) : (
-                  <ZoomIn className="w-3.5 h-3.5 shrink-0" />
-                )}
+                <Minus className="w-3.5 h-3.5" />
               </button>
             </div>
-          </div>
+          )}
+
+          {/* Next Carpet Button */}
+          <button
+            type="button"
+            onClick={onNextPage}
+            disabled={!hasNextPage}
+            className={`h-9 px-3 rounded-xl text-xs font-bold flex items-center gap-1 transition shrink-0 ${
+              !hasNextPage
+                ? 'opacity-30 pointer-events-none bg-white/5 text-slate-400 border border-white/10'
+                : 'bg-white/15 hover:bg-white/25 text-white border border-white/25 active:scale-95 cursor-pointer'
+            }`}
+          >
+            <span>فرش بعدی</span>
+            <ChevronLeft className="w-4 h-4" />
+          </button>
         </div>
       </div>
     </div>

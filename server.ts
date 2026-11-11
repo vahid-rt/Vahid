@@ -7,12 +7,16 @@ import { createServer as createViteServer } from 'vite';
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const PUBLIC_CARPETS_DIR = path.join(__dirname, 'public', 'carpets');
+const PUBLIC_WHITE_DIR = path.join(__dirname, 'public', 'carpets-white');
+const PUBLIC_PERSP_DIR = path.join(__dirname, 'public', 'carpets-perspective');
 const CATALOG_FILE = path.join(__dirname, 'data', 'catalog.json');
 const PUBLIC_CATALOG_FILE = path.join(__dirname, 'public', 'catalog.json');
+const PERSP_FALLBACKS_FILE = path.join(__dirname, 'public', 'perspective-fallbacks.json');
 
-if (!fs.existsSync(PUBLIC_CARPETS_DIR)) {
-  fs.mkdirSync(PUBLIC_CARPETS_DIR, { recursive: true });
+for (const dir of [PUBLIC_WHITE_DIR, PUBLIC_PERSP_DIR]) {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
 }
 
 function readStoredCatalog() {
@@ -36,9 +40,22 @@ function readStoredCatalog() {
   };
 }
 
+let cachedPerspFallbacks: Record<string, string> | null = null;
+function getPerspFallbacks(): Record<string, string> {
+  if (cachedPerspFallbacks) return cachedPerspFallbacks;
+  try {
+    if (fs.existsSync(PERSP_FALLBACKS_FILE)) {
+      cachedPerspFallbacks = JSON.parse(fs.readFileSync(PERSP_FALLBACKS_FILE, 'utf-8'));
+      return cachedPerspFallbacks || {};
+    }
+  } catch {
+    // ignore
+  }
+  return {};
+}
+
 function isValidJpegBuffer(buf: Buffer): boolean {
   if (!buf || buf.length < 4) return false;
-  // JPEG magic bytes: FF D8 FF, or PNG: 89 50 4E 47, or WebP: 52 49 46 46
   const isJpeg = buf[0] === 0xff && buf[1] === 0xd8 && buf[2] === 0xff;
   const isPng = buf[0] === 0x89 && buf[1] === 0x50 && buf[2] === 0x4e && buf[3] === 0x47;
   const isWebp = buf[0] === 0x52 && buf[1] === 0x49 && buf[2] === 0x46 && buf[3] === 0x46;
@@ -47,8 +64,8 @@ function isValidJpegBuffer(buf: Buffer): boolean {
 
 async function fetchPublicDriveImage(fileId: string): Promise<Buffer | null> {
   const candidateUrls = [
-    `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1200`,
-    `https://lh3.googleusercontent.com/d/${encodeURIComponent(fileId)}=w1200`,
+    `https://drive.google.com/thumbnail?id=${encodeURIComponent(fileId)}&sz=w1400`,
+    `https://lh3.googleusercontent.com/d/${encodeURIComponent(fileId)}=w1400`,
     `https://drive.google.com/uc?export=download&id=${encodeURIComponent(fileId)}`,
   ];
 
@@ -83,77 +100,26 @@ async function fetchPublicDriveImage(fileId: string): Promise<Buffer | null> {
   return null;
 }
 
-async function startServer() {
-  const app = express();
-  const PORT = 3000;
+async function serveWhiteBgImage(req: express.Request, res: express.Response) {
+  const rawId = req.params.id || '';
+  const fileId = rawId.replace(/\.jpg$/i, '').replace(/[^a-zA-Z0-9_-]/g, '');
+  if (!fileId) {
+    res.status(400).send('Invalid file ID');
+    return;
+  }
 
-  app.use(express.json());
+  const cachedFilePath = path.join(PUBLIC_WHITE_DIR, `${fileId}.jpg`);
 
-  // Serve cached carpet images or fetch them on demand from public Google Drive
-  app.get('/api/carpet-image/:id', async (req, res) => {
-    const rawId = req.params.id || '';
-    const fileId = rawId.replace(/\.jpg$/i, '').replace(/[^a-zA-Z0-9_-]/g, '');
-    if (!fileId) {
-      res.status(400).send('Invalid file ID');
-      return;
-    }
-
-    const cachedFilePath = path.join(PUBLIC_CARPETS_DIR, `${fileId}.jpg`);
-
-    try {
-      if (fs.existsSync(cachedFilePath)) {
-        const existingBuf = fs.readFileSync(cachedFilePath);
-        if (isValidJpegBuffer(existingBuf)) {
-          res.setHeader('Content-Type', 'image/jpeg');
-          res.setHeader('Cache-Control', 'public, max-age=604800');
-          res.send(existingBuf);
-          return;
-        } else {
-          fs.unlinkSync(cachedFilePath);
-        }
-      }
-
-      const downloadedBuf = await fetchPublicDriveImage(fileId);
-      if (downloadedBuf) {
-        try {
-          fs.writeFileSync(cachedFilePath, downloadedBuf);
-        } catch {
-          // Ignore write error if read-only filesystem
-        }
-        res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=604800');
-        res.send(downloadedBuf);
-        return;
-      }
-
-      res.status(404).json({
-        error: 'DRIVE_FOLDER_RESTRICTED',
-        message:
-          'پوشه carpet در گوگل درایو هنوز روی حالت Anyone with the link (عمومی) قرار نگرفته است.',
-      });
-    } catch (err) {
-      console.error('Error serving carpet image:', err);
-      res.status(500).send('Error loading image');
-    }
-  });
-
-  // Also handle /carpets/:filename by routing through the same caching logic
-  app.get('/carpets/:filename', async (req, res) => {
-    const rawName = req.params.filename || '';
-    const fileId = rawName.replace(/\.jpg$/i, '').replace(/[^a-zA-Z0-9_-]/g, '');
-    if (!fileId) {
-      res.status(400).send('Invalid filename');
-      return;
-    }
-
-    const cachedFilePath = path.join(PUBLIC_CARPETS_DIR, `${fileId}.jpg`);
+  try {
     if (fs.existsSync(cachedFilePath)) {
       const existingBuf = fs.readFileSync(cachedFilePath);
       if (isValidJpegBuffer(existingBuf)) {
         res.setHeader('Content-Type', 'image/jpeg');
-        res.setHeader('Cache-Control', 'public, max-age=604800');
+        res.setHeader('Cache-Control', 'no-cache, must-revalidate');
         res.send(existingBuf);
         return;
+      } else {
+        fs.unlinkSync(cachedFilePath);
       }
     }
 
@@ -165,16 +131,101 @@ async function startServer() {
         // Ignore write error
       }
       res.setHeader('Content-Type', 'image/jpeg');
-      res.setHeader('Cache-Control', 'public, max-age=604800');
+      res.setHeader('Cache-Control', 'no-cache, must-revalidate');
       res.send(downloadedBuf);
       return;
     }
 
-    res.status(404).send('Image not accessible yet');
+    res.status(404).json({
+      error: 'DRIVE_FOLDER_RESTRICTED',
+      message: 'تصویر بک‌گراند سفید در دسترس نیست.',
+    });
+  } catch (err) {
+    console.error('Error serving white-bg carpet image:', err);
+    res.status(500).send('Error loading image');
+  }
+}
+
+async function startServer() {
+  const app = express();
+  const PORT = 3000;
+
+  app.use(express.json());
+
+  // Slide 1: Serve 3:4 Top-Down White-Background Carpet Image (fresh endpoint to bypass old 7-day browser cache)
+  app.get('/api/carpet-white/:id', serveWhiteBgImage);
+  app.get('/api/carpet-image/:id', serveWhiteBgImage);
+
+  // Slide 2: Serve Perspective Angle Carpet Image
+  app.get('/api/carpet-perspective/:id', async (req, res) => {
+    const rawId = req.params.id || '';
+    const fileId = rawId.replace(/\.jpg$/i, '').replace(/[^a-zA-Z0-9_-]/g, '');
+    if (!fileId) {
+      res.status(400).send('Invalid file ID');
+      return;
+    }
+
+    const cachedPerspPath = path.join(PUBLIC_PERSP_DIR, `${fileId}.jpg`);
+
+    try {
+      // 1. Check local perspective cache (/public/carpets-perspective/:id.jpg)
+      if (fs.existsSync(cachedPerspPath)) {
+        const existingBuf = fs.readFileSync(cachedPerspPath);
+        if (isValidJpegBuffer(existingBuf)) {
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          res.send(existingBuf);
+          return;
+        }
+      }
+
+      // 2. Check if catalog has a perspectiveDriveId for this item
+      const catalog = readStoredCatalog();
+      const matchedItem = (catalog.items || []).find(
+        (it: { id?: string; originalId?: string; perspectiveDriveId?: string }) =>
+          it.originalId === fileId || it.id === fileId || it.perspectiveDriveId === fileId
+      );
+      const drivePerspId = matchedItem?.perspectiveDriveId || fileId;
+
+      if (drivePerspId) {
+        const downloadedBuf = await fetchPublicDriveImage(drivePerspId);
+        if (downloadedBuf) {
+          try {
+            fs.writeFileSync(cachedPerspPath, downloadedBuf);
+          } catch {
+            // ignore
+          }
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          res.send(downloadedBuf);
+          return;
+        }
+      }
+
+      // 3. Check persistent Base64 JSON fallback (/public/perspective-fallbacks.json)
+      const fallbacks = getPerspFallbacks();
+      const dataUrl = fallbacks[fileId] || (matchedItem?.originalId ? fallbacks[matchedItem.originalId] : null);
+      if (dataUrl && dataUrl.startsWith('data:image/')) {
+        const base64Part = dataUrl.split(',')[1];
+        if (base64Part) {
+          const buf = Buffer.from(base64Part, 'base64');
+          res.setHeader('Content-Type', 'image/jpeg');
+          res.setHeader('Cache-Control', 'no-cache, must-revalidate');
+          res.send(buf);
+          return;
+        }
+      }
+
+      res.status(404).send('Perspective image not found');
+    } catch (err) {
+      console.error('Error serving perspective carpet image:', err);
+      res.status(500).send('Error loading perspective image');
+    }
   });
 
   // Serve stored catalog metadata
   app.get('/api/catalog', (_req, res) => {
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate');
     const catalog = readStoredCatalog();
     res.json(catalog);
   });

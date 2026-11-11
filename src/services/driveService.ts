@@ -2,6 +2,9 @@ import { CarpetPatternInfo, SizeCategory } from './carpetNaming';
 
 export interface CarpetItem {
   id: string;
+  originalId?: string;
+  whiteBgId?: string;
+  perspectiveDriveId?: string | null;
   driveFileName: string;
   code: string;
   tabletCode?: string;
@@ -20,6 +23,8 @@ export interface CarpetItem {
   albumName: string;
   mimeType: string;
   localUrl: string;
+  whiteBgUrl?: string;
+  perspectiveUrl?: string;
 }
 
 export interface CartItem {
@@ -35,13 +40,38 @@ export interface ServerCatalogResponse {
   items: CarpetItem[];
 }
 
+let cachedFallbacksPromise: Promise<Record<string, string>> | null = null;
+
+export async function getStaticPerspectiveFallback(originalId: string): Promise<string | null> {
+  try {
+    if (!cachedFallbacksPromise) {
+      cachedFallbacksPromise = fetch('./perspective-fallbacks.json')
+        .then((r) => (r.ok ? r.json() : {}))
+        .catch(() => ({}));
+    }
+    const map = await cachedFallbacksPromise;
+    return map[originalId] || null;
+  } catch {
+    return null;
+  }
+}
+
 function normalizeCatalogUrls(data: ServerCatalogResponse): ServerCatalogResponse {
   return {
     ...data,
-    items: data.items.map((item) => ({
-      ...item,
-      localUrl: item.localUrl.startsWith('/') ? `.${item.localUrl}` : item.localUrl,
-    })),
+    items: data.items.map((item) => {
+      const whiteId = item.whiteBgId || item.id;
+      const origId = item.originalId || item.id;
+      return {
+        ...item,
+        id: whiteId,
+        whiteBgId: whiteId,
+        originalId: origId,
+        localUrl: `./api/carpet-white/${whiteId}?v=topdown34`,
+        whiteBgUrl: `./api/carpet-white/${whiteId}?v=topdown34`,
+        perspectiveUrl: `./api/carpet-perspective/${origId}?v=persp2`,
+      };
+    }),
   };
 }
 
@@ -68,4 +98,3 @@ export async function fetchStoredCatalogFromServer(): Promise<ServerCatalogRespo
   const staticData = (await staticRes.json()) as ServerCatalogResponse;
   return normalizeCatalogUrls(staticData);
 }
-

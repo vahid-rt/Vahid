@@ -1,14 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ChevronLeft,
-  ChevronRight,
-  SlidersHorizontal,
+  Layers,
   Volume2,
   VolumeX,
   ShoppingBag,
   X,
   Share2,
   Check,
+  ChevronLeft,
 } from 'lucide-react';
 import {
   FILTER_PRESETS,
@@ -24,7 +23,7 @@ import {
   CartItem,
   fetchStoredCatalogFromServer,
 } from './services/driveService';
-import { CarpetFramePage, FrameTemplateStyle } from './components/CarpetFramePage';
+import { CarpetFramePage } from './components/CarpetFramePage';
 import { CatalogDrawer } from './components/CatalogDrawer';
 import { CartInvoiceModal } from './components/CartInvoiceModal';
 
@@ -78,12 +77,11 @@ export function App() {
   const [isCartOpen, setIsCartOpen] = useState<boolean>(false);
   const [linkCopied, setLinkCopied] = useState<boolean>(false);
 
-  // Offline Filter & Frame Style State
-  const [filter, setFilter] = useState<OfflineFilterSettings>({
+  // Automatic high-contrast wool enhancement (no manual filter UI needed)
+  const [filter] = useState<OfflineFilterSettings>({
     presetId: 'hd_wool',
     ...FILTER_PRESETS[0].settings,
   });
-  const [frameStyle, setFrameStyle] = useState<FrameTemplateStyle>('ivory_gold');
   const [isDrawerOpen, setIsDrawerOpen] = useState<boolean>(false);
   const [soundEnabled, setSoundEnabled] = useState<boolean>(true);
 
@@ -94,7 +92,6 @@ export function App() {
   const pointerStartXRef = useRef<number | null>(null);
   const pointerStartYRef = useRef<number | null>(null);
 
-  // Load stored carpet catalog from server (/api/catalog)
   useEffect(() => {
     let mounted = true;
     fetchStoredCatalogFromServer()
@@ -114,7 +111,6 @@ export function App() {
     };
   }, []);
 
-  // Filtered Carpet Items by Size Album, Pattern Album, and Search
   const filteredItems = useMemo(() => {
     return items.filter((item) => {
       if (selectedSize !== 'all' && item.sizeCategory !== selectedSize) {
@@ -142,7 +138,6 @@ export function App() {
 
   const currentCarpet = filteredItems[currentPageIndex] || null;
 
-  // Cart Handlers
   const handleAddToCart = useCallback((carpet: CarpetItem) => {
     setCart((prev) => {
       const existingIdx = prev.findIndex((c) => c.carpet.id === carpet.id);
@@ -176,7 +171,7 @@ export function App() {
     const shareUrl =
       window.location.hostname.includes('ais-dev')
         ? PUBLIC_SHARED_URL
-        : window.location.origin;
+        : window.location.origin + window.location.pathname;
 
     try {
       if (navigator.share) {
@@ -210,7 +205,6 @@ export function App() {
     return cart.find((c) => c.carpet.id === currentCarpet.id)?.quantity || 0;
   }, [cart, currentCarpet]);
 
-  // Page Flip Navigation
   const goToNextPage = useCallback(() => {
     if (currentPageIndex >= filteredItems.length - 1 || flipDirection) return;
     if (soundEnabled) playPageFlipSound();
@@ -218,7 +212,7 @@ export function App() {
     setTimeout(() => {
       setCurrentPageIndex((prev) => Math.min(filteredItems.length - 1, prev + 1));
       setFlipDirection(null);
-    }, 180);
+    }, 170);
   }, [currentPageIndex, filteredItems.length, flipDirection, soundEnabled]);
 
   const goToPrevPage = useCallback(() => {
@@ -228,7 +222,7 @@ export function App() {
     setTimeout(() => {
       setCurrentPageIndex((prev) => Math.max(0, prev - 1));
       setFlipDirection(null);
-    }, 180);
+    }, 170);
   }, [currentPageIndex, flipDirection, soundEnabled]);
 
   useEffect(() => {
@@ -278,15 +272,15 @@ export function App() {
   };
 
   const rotationYDeg = useMemo(() => {
-    if (flipDirection === 'next') return -26;
-    if (flipDirection === 'prev') return 26;
+    if (flipDirection === 'next') return -22;
+    if (flipDirection === 'prev') return 22;
     if (isDraggingPage && Math.abs(dragDeltaX) > 4) {
-      return (dragDeltaX / 180) * 22;
+      return (dragDeltaX / 180) * 18;
     }
     return 0;
   }, [flipDirection, isDraggingPage, dragDeltaX]);
 
-  const pageOpacity = flipDirection ? 0.84 : 1;
+  const pageOpacity = flipDirection ? 0.85 : 1;
 
   const activeSizeLabel =
     selectedSize !== 'all'
@@ -299,127 +293,144 @@ export function App() {
 
   return (
     <div
-      className="h-dvh w-screen overflow-hidden bg-[#050505] flex items-center justify-center select-none"
+      className="h-dvh w-screen overflow-hidden bg-[#040B14] flex items-center justify-center select-none"
       dir="rtl"
     >
-      {/* DEDICATED MOBILE PHONE VIEWPORT SHELL */}
-      <div className="relative w-full max-w-[420px] h-dvh sm:h-[95dvh] sm:max-h-[896px] bg-[#0A0A0A] text-white flex flex-col overflow-hidden sm:rounded-[38px] sm:border-[6px] sm:border-[#222222] sm:shadow-[0_25px_80px_rgba(0,0,0,0.95)]">
-        {/* Subtle Phone Earpiece Notch Indicator on Desktop Preview */}
-        <div className="hidden sm:flex items-center justify-center py-1 bg-[#0E0E0E]">
-          <div className="w-20 h-1 rounded-full bg-neutral-700" />
-        </div>
+      {/* DEDICATED MOBILE FULL-SCREEN VIEWPORT (Navy Blue & White Frosted Theme) */}
+      <div className="relative w-full max-w-[430px] h-dvh sm:h-[96dvh] sm:max-h-[900px] bg-[#07111E] text-white flex flex-col overflow-hidden sm:rounded-[34px] sm:border-[4px] sm:border-white/15 sm:shadow-[0_25px_80px_rgba(0,0,0,0.95)]">
+        {/* FLOATING FROSTED-GLASS TOP HEADER OVERLAY */}
+        <header className="absolute top-0 inset-x-0 z-30 px-3 pt-2.5 pb-2 flex flex-col gap-1.5 pointer-events-none">
+          <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-2xl bg-[#0B192C]/75 backdrop-blur-xl border border-white/20 shadow-lg pointer-events-auto">
+            {/* Right: Prominent Easy-Access Albums Drawer Button + Page Counter */}
+            <div className="flex items-center gap-2 min-w-0">
+              <button
+                type="button"
+                onClick={() => setIsDrawerOpen(true)}
+                className="h-9 px-3 rounded-xl bg-white hover:bg-slate-100 text-[#0B192C] text-xs font-extrabold flex items-center gap-1.5 transition shadow-sm cursor-pointer shrink-0"
+              >
+                <Layers className="w-4 h-4 text-[#0B192C]" />
+                <span>آلبوم‌ها و متراژ</span>
+              </button>
 
-        {/* MOBILE TOP APP BAR (52px height) */}
-        <header className="h-13 shrink-0 px-3 bg-[#0E0E0E] border-b border-neutral-800/90 flex items-center justify-between gap-2 z-30">
-          {/* Brand Title */}
-          <a
-            href="#catalog"
-            onClick={(e) => {
-              e.preventDefault();
-              setCurrentPageIndex(0);
-            }}
-            className="text-base font-bold tracking-tight text-[#FACC15] whitespace-nowrap shrink-0"
-          >
-            کاتالوگ فرش پشمی
-          </a>
-
-          {/* Right Actions: Share Link + Shopping Cart Button + Drawer Trigger */}
-          <div className="flex items-center gap-1.5 shrink-0">
-            <button
-              type="button"
-              onClick={handleShareCatalogLink}
-              className="min-h-[38px] px-2.5 py-1.5 rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-200 border border-neutral-700 text-xs font-bold flex items-center gap-1 transition-colors whitespace-nowrap cursor-pointer"
-              title="کپی و اشتراک‌گذاری لینک کاتالوگ"
-            >
-              {linkCopied ? (
-                <>
-                  <Check className="w-3.5 h-3.5 text-[#FACC15]" />
-                  <span className="text-[#FACC15]">کپی شد</span>
-                </>
-              ) : (
-                <>
-                  <Share2 className="w-3.5 h-3.5 text-[#FACC15]" />
-                  <span>لینک</span>
-                </>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsCartOpen(true)}
-              className="relative min-h-[38px] px-2.5 py-1.5 rounded-xl bg-[#1A1A1A] hover:bg-neutral-800 text-white border border-[#FACC15]/50 text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap cursor-pointer"
-              title="مشاهده سبد خرید و فاکتور"
-            >
-              <ShoppingBag className="w-4 h-4 text-[#FACC15]" />
-              <span>سبد</span>
-              {totalCartItemsCount > 0 && (
-                <span className="px-1.5 py-0.2 rounded-full bg-[#FACC15] text-black text-[11px] font-extrabold tabular-nums">
-                  {toPersianDigits(totalCartItemsCount)}
-                </span>
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              className="min-h-[38px] px-3 py-1.5 rounded-xl bg-[#FACC15] hover:bg-yellow-300 text-[#0A0A0A] text-xs font-bold flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 shadow-sm cursor-pointer"
-            >
-              <SlidersHorizontal className="w-3.5 h-3.5" />
-              <span>آلبوم‌ها</span>
-            </button>
-          </div>
-        </header>
-
-        {/* Active Album/Size Filter Indicator Strip (if filtered) */}
-        {(activeSizeLabel || activePatternLabel) && (
-          <div className="shrink-0 bg-[#141412] border-b border-neutral-800 px-3 py-1.5 flex items-center justify-between gap-2 text-[11px] z-20">
-            <div className="flex items-center gap-1.5 truncate text-neutral-300">
-              <span>آلبوم فعال:</span>
-              {activeSizeLabel && (
-                <strong className="text-[#FACC15]">{activeSizeLabel}</strong>
-              )}
-              {activeSizeLabel && activePatternLabel && <span>·</span>}
-              {activePatternLabel && (
-                <strong className="text-white">{activePatternLabel}</strong>
+              {filteredItems.length > 0 && (
+                <button
+                  type="button"
+                  onClick={() => setIsDrawerOpen(true)}
+                  className="h-9 px-2.5 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-white tabular-nums cursor-pointer"
+                  title="شماره برگ"
+                >
+                  <span className="text-sky-200">{toPersianDigits(currentPageIndex + 1)}</span>
+                  <span className="opacity-50 mx-0.5">/</span>
+                  <span>{toPersianDigits(filteredItems.length)}</span>
+                </button>
               )}
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setSelectedSize('all');
-                setSelectedCategory('all');
-                setCurrentPageIndex(0);
-              }}
-              className="text-neutral-400 hover:text-[#FACC15] flex items-center gap-0.5 shrink-0 cursor-pointer"
-            >
-              <span>نمایش همه</span>
-              <X className="w-3.5 h-3.5" />
-            </button>
+
+            {/* Left: Frosted Controls (Sound, Share, Cart) */}
+            <div className="flex items-center gap-1.5 shrink-0">
+              <button
+                type="button"
+                onClick={() => setSoundEnabled((s) => !s)}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                title="صدای ورق زدن"
+              >
+                {soundEnabled ? (
+                  <Volume2 className="w-4 h-4 text-sky-200" />
+                ) : (
+                  <VolumeX className="w-4 h-4 text-slate-400" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={handleShareCatalogLink}
+                className="w-9 h-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/20 text-white flex items-center justify-center transition cursor-pointer"
+                title="کپی لینک کاتالوگ"
+              >
+                {linkCopied ? (
+                  <Check className="w-4 h-4 text-sky-200" />
+                ) : (
+                  <Share2 className="w-4 h-4 text-white" />
+                )}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setIsCartOpen(true)}
+                className="relative h-9 px-2.5 rounded-xl bg-white/15 hover:bg-white/25 text-white border border-white/30 text-xs font-bold flex items-center gap-1.5 transition cursor-pointer"
+                title="سبد خرید و فاکتور"
+              >
+                <ShoppingBag className="w-4 h-4 text-sky-200" />
+                <span>سبد</span>
+                {totalCartItemsCount > 0 && (
+                  <span className="px-1.5 rounded-full bg-white text-[#0B192C] text-[10px] font-extrabold tabular-nums">
+                    {toPersianDigits(totalCartItemsCount)}
+                  </span>
+                )}
+              </button>
+            </div>
           </div>
+
+          {/* Active Filter Tag Overlay (if filtered) */}
+          {(activeSizeLabel || activePatternLabel) && (
+            <div className="flex items-center justify-between gap-2 px-3 py-1.5 rounded-xl bg-[#0B192C]/80 backdrop-blur-xl border border-white/20 text-[11px] pointer-events-auto shadow-md">
+              <div className="flex items-center gap-1.5 truncate text-slate-200">
+                <span>آلبوم فعال:</span>
+                {activeSizeLabel && (
+                  <strong className="text-sky-200">{activeSizeLabel}</strong>
+                )}
+                {activeSizeLabel && activePatternLabel && <span>·</span>}
+                {activePatternLabel && (
+                  <strong className="text-white">{activePatternLabel}</strong>
+                )}
+              </div>
+              <button
+                type="button"
+                onClick={() => {
+                  setSelectedSize('all');
+                  setSelectedCategory('all');
+                  setCurrentPageIndex(0);
+                }}
+                className="text-sky-200 hover:text-white flex items-center gap-0.5 shrink-0 font-bold cursor-pointer"
+              >
+                <span>نمایش همه</span>
+                <X className="w-3.5 h-3.5" />
+              </button>
+            </div>
+          )}
+        </header>
+
+        {/* EASY SIDE PULL-TAB ON RIGHT EDGE TO SLIDE OPEN ALBUMS DRAWER */}
+        {!isDrawerOpen && (
+          <button
+            type="button"
+            onClick={() => setIsDrawerOpen(true)}
+            className="absolute right-0 top-1/2 -translate-y-1/2 z-30 py-3.5 px-1.5 rounded-l-2xl bg-[#0B192C]/85 hover:bg-white hover:text-[#0B192C] backdrop-blur-xl border-y border-l border-white/30 text-white shadow-xl flex flex-col items-center gap-1.5 transition cursor-pointer"
+            title="باز کردن منوی کشویی آلبوم‌ها"
+          >
+            <ChevronLeft className="w-4 h-4 text-sky-200" />
+            <span
+              className="text-[11px] font-extrabold tracking-wide"
+              style={{ writingMode: 'vertical-rl' }}
+            >
+              آلبوم‌ها
+            </span>
+          </button>
         )}
 
-        {/* MAIN MOBILE FULL-SCREEN INTERACTIVE FLIPBOOK STAGE */}
+        {/* FULL-SCREEN INTERACTIVE FLIPBOOK STAGE */}
         <main
-          className="relative flex-1 min-h-0 w-full flex items-center justify-center px-2.5 py-2 overflow-hidden"
+          className="relative w-full h-full flex items-center justify-center overflow-hidden"
           style={{ perspective: '1600px' }}
           onPointerDown={items.length > 0 ? handlePointerDown : undefined}
           onPointerMove={items.length > 0 ? handlePointerMove : undefined}
           onPointerUp={items.length > 0 ? handlePointerUp : undefined}
           onPointerCancel={items.length > 0 ? handlePointerUp : undefined}
         >
-          <div
-            className="pointer-events-none absolute inset-0 opacity-15"
-            style={{
-              backgroundImage:
-                'radial-gradient(#FACC15 1px, transparent 1px), radial-gradient(#FFFFFF 0.5px, #0A0A0A 0.5px)',
-              backgroundSize: '24px 24px',
-            }}
-          />
-
           {isInitialLoading ? (
-            <div className="relative z-10 w-full rounded-2xl border-2 border-[#FACC15] bg-[#121212] flex flex-col items-center justify-center gap-4 p-6 text-center shadow-2xl">
-              <div className="w-11 h-11 border-4 border-[#FACC15] border-t-transparent rounded-full animate-spin" />
-              <h3 className="text-base font-bold text-[#FACC15]">
+            <div className="relative z-10 flex flex-col items-center justify-center gap-3 p-6 text-center">
+              <div className="w-10 h-10 border-3 border-white border-t-transparent rounded-full animate-spin" />
+              <h3 className="text-sm font-bold text-white">
                 در حال بارگذاری کاتالوگ فرش...
               </h3>
             </div>
@@ -432,17 +443,17 @@ export function App() {
                 opacity: pageOpacity,
                 transition: isDraggingPage
                   ? 'none'
-                  : 'transform 180ms cubic-bezier(0.16, 1, 0.3, 1), opacity 180ms ease',
+                  : 'transform 170ms cubic-bezier(0.16, 1, 0.3, 1), opacity 170ms ease',
               }}
             >
               {Math.abs(rotationYDeg) > 1 && (
                 <div
-                  className="pointer-events-none absolute inset-0 z-30 rounded-2xl"
+                  className="pointer-events-none absolute inset-0 z-30"
                   style={{
                     background:
                       rotationYDeg < 0
-                        ? 'linear-gradient(to right, rgba(0,0,0,0.48), rgba(250,204,21,0.09) 35%, transparent)'
-                        : 'linear-gradient(to left, rgba(0,0,0,0.48), rgba(250,204,21,0.09) 35%, transparent)',
+                        ? 'linear-gradient(to right, rgba(7,17,30,0.55), rgba(255,255,255,0.06) 35%, transparent)'
+                        : 'linear-gradient(to left, rgba(7,17,30,0.55), rgba(255,255,255,0.06) 35%, transparent)',
                   }}
                 />
               )}
@@ -452,14 +463,17 @@ export function App() {
                 pageNumber={currentPageIndex + 1}
                 totalPages={filteredItems.length}
                 filter={filter}
-                frameStyle={frameStyle}
                 cartQuantity={currentCarpetCartQty}
                 onAddToCart={handleAddToCart}
                 onUpdateCartQuantity={handleUpdateCartQuantity}
+                onNextPage={goToNextPage}
+                onPrevPage={goToPrevPage}
+                hasNextPage={currentPageIndex < filteredItems.length - 1}
+                hasPrevPage={currentPageIndex > 0}
               />
             </div>
           ) : (
-            <div className="w-full h-full rounded-2xl border border-neutral-800 bg-[#121212] flex flex-col items-center justify-center gap-3 p-6 text-center">
+            <div className="w-full h-full flex flex-col items-center justify-center gap-3 p-6 text-center">
               <p className="text-sm font-bold text-white">فرشی در این دسته یافت نشد</p>
               <button
                 type="button"
@@ -468,7 +482,7 @@ export function App() {
                   setSelectedCategory('all');
                   setSearchQuery('');
                 }}
-                className="px-4 py-2 rounded-xl bg-[#FACC15] text-black text-xs font-bold cursor-pointer"
+                className="px-4 py-2 rounded-xl bg-white text-[#0B192C] text-xs font-extrabold cursor-pointer"
               >
                 نمایش همه فرش‌ها
               </button>
@@ -476,67 +490,7 @@ export function App() {
           )}
         </main>
 
-        {/* ERGONOMIC MOBILE THUMB-ZONE BOTTOM NAVIGATION BAR (56px height) */}
-        <footer className="h-14 shrink-0 px-3 bg-[#0E0E0E] border-t border-neutral-800/90 flex items-center justify-between gap-2 z-20">
-          {/* Right Thumb Button: Previous Page */}
-          <button
-            type="button"
-            onClick={goToPrevPage}
-            disabled={currentPageIndex <= 0}
-            className={`min-h-[42px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all whitespace-nowrap shrink-0 ${
-              currentPageIndex <= 0
-                ? 'opacity-30 pointer-events-none bg-neutral-900 text-neutral-500'
-                : 'bg-[#1A1A1A] hover:bg-neutral-800 text-white border border-neutral-700 active:scale-95 cursor-pointer'
-            }`}
-          >
-            <ChevronRight className="w-4 h-4 text-[#FACC15]" />
-            <span>برگ قبلی</span>
-          </button>
-
-          {/* Center: Sound Toggle + Page Indicator */}
-          <div className="flex items-center gap-2 min-w-0">
-            <button
-              type="button"
-              onClick={() => setSoundEnabled((s) => !s)}
-              className="min-w-[38px] min-h-[38px] rounded-xl bg-neutral-900 hover:bg-neutral-800 text-neutral-300 flex items-center justify-center transition-colors shrink-0 cursor-pointer"
-              title="صدای ورق زدن"
-            >
-              {soundEnabled ? (
-                <Volume2 className="w-4 h-4 text-[#FACC15]" />
-              ) : (
-                <VolumeX className="w-4 h-4 text-neutral-500" />
-              )}
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setIsDrawerOpen(true)}
-              className="px-2.5 py-1.5 rounded-xl bg-neutral-900 border border-neutral-800 text-[11px] font-bold text-neutral-200 tabular-nums whitespace-nowrap cursor-pointer"
-              title="انتخاب آلبوم یا برگ"
-            >
-              <span className="text-[#FACC15]">{toPersianDigits(currentPageIndex + 1)}</span>
-              <span className="text-neutral-500 mx-1">/</span>
-              <span>{toPersianDigits(filteredItems.length)}</span>
-            </button>
-          </div>
-
-          {/* Left Thumb Button: Next Page */}
-          <button
-            type="button"
-            onClick={goToNextPage}
-            disabled={currentPageIndex >= filteredItems.length - 1}
-            className={`min-h-[42px] px-3.5 rounded-xl text-xs font-bold flex items-center gap-1 transition-all whitespace-nowrap shrink-0 ${
-              currentPageIndex >= filteredItems.length - 1
-                ? 'opacity-30 pointer-events-none bg-neutral-900 text-neutral-500'
-                : 'bg-[#FACC15] hover:bg-yellow-300 text-black shadow-md active:scale-95 cursor-pointer'
-            }`}
-          >
-            <span>برگ بعدی</span>
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        </footer>
-
-        {/* SLIDE-OUT PERSIAN DRAWER FOR SIZE/PATTERN ALBUMS & SELECTABLE FILTERS */}
+        {/* SLIDE-OUT FROSTED GLASS DRAWER FOR SIZE & PATTERN ALBUMS */}
         <CatalogDrawer
           isOpen={isDrawerOpen}
           onClose={() => setIsDrawerOpen(false)}
@@ -561,10 +515,6 @@ export function App() {
           }}
           cart={cart}
           onAddToCart={handleAddToCart}
-          filter={filter}
-          onUpdateFilter={setFilter}
-          frameStyle={frameStyle}
-          onSelectFrameStyle={setFrameStyle}
         />
 
         {/* SHOPPING CART & SHAREABLE INVOICE MODAL */}
